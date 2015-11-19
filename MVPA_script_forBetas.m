@@ -5,6 +5,7 @@ target_betas = [15:29 36:50 57:71]
 %filenames=SPM.xY.P(target_betas,:); % raw epi's get loaded here, filtered,
 %saved as separate.nii's
 
+
 for i=1:length(target_betas)
     filenames(i,:)=[spmPath 'beta_00' num2str(target_betas(i)) '.nii'];
 end
