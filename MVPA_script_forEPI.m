@@ -1,25 +1,32 @@
 db_mode = 0; % debugger skips some of the initial steps and instead loads stuff that usually would be computer from a .mat file
 if db_mode == 0;
 %mask_fn='/Volumes/Aidas_HDD/MRI_data/S1/Analysis/mask.nii';
-mask_fn='/Users/aidas_el_cap/Desktop/ofa_ffa_mask.nii';
+
+mask_fn='/Volumes/Aidas_HDD/MRI_data/S3/Analysis/mask.nii';
 %%
-roi_path = '/Volumes/Aidas_HDD/MRI_data/S1/Analysis/test3_roi.mat'; load(roi_path);% load to roi object
+roi_path = '/Volumes/Aidas_HDD/MRI_data/S3/Analysis/FFAish_roi.mat'; load(roi_path);% load to roi object
 
-
+nsess = 5
 hold on
 disp('preparing for plotting')
-for i = 1:4
+for i = 1:nsess
     hold on
-    subplot(4,1,i)
+    subplot(nsess,1,i)
     xlabel(sprintf('Session %d',i))
     drawnow
-    P = sprintf('/Volumes/Aidas_HDD/MRI_data/S1/MVPA_analysis/S1/functional/Sess%d/f50hz_wradata.nii',i);
-    mY = get_marsy(roi, P, 'mean');  % extract data into marsy data object
-y = summary_data(mY);% get summary time course(s)
+    P = sprintf('/Volumes/Aidas_HDD/MRI_data/S3/Functional/Sess%d/f50hz_swradata.nii',i);
+    try mY = get_marsy(roi, P, 'mean'); % extract data into marsy data object
+        disp('get_marsy works now!')
+    catch
+        mY = get_marsy_1(roi, P, 'mean'); %dirtiest of dirty hacks
+    end
+    % get_marsy_1 <- pure magic 
+y = summary_data(mY);% get summary time course(s) % needs marsy object as input
 plot(y)
 drawnow
 end
 disp('done')
+
 
 % %for plotting
 % subplot(2,2,1)
@@ -33,13 +40,14 @@ disp('done')
 
 %%
 %SPM.xY.P(1:3,:) first three lines
-target_EPIs = MakeTRs2;
+%target_EPIs = MakeTRs2;
+load('/Volumes/Aidas_HDD/MRI_data/S2/fixed_target_EPIs.mat')
 
 %filtered_data = '/Volumes/Aidas_HDD/MRI_data/S1/functional/Sess1/f50hz_wrdata.nii';
 
 for ln = 1 : length(target_EPIs)
     hold on
-    filename = sprintf('/Volumes/Aidas_HDD/MRI_data/S1/MVPA_analysis/S1/functional/Sess%d/f50hz_wradata.nii',target_EPIs(ln,3));
+    filename = sprintf('/Volumes/Aidas_HDD/MRI_data/S2/Functional/Sess%d/f50hz_swradata.nii',target_EPIs(ln,3));
     single_scan = cosmo_fmri_dataset(filename,'mask', mask_fn,'targets',target_EPIs(ln,2), 'chunks', target_EPIs(ln,3), 'volumes',target_EPIs(ln,1));
     
     subplot(4,1,target_EPIs(ln,3))
