@@ -2,18 +2,19 @@
 %if db_mode == 0;
 
 %% Parameters
-subID = 6 % which subject
+for subID = 4 % which subject
 nsess = 5; % how many sessions
-
 
 plotting = 0
 %% Directories
 %mask_fn='/Volumes/Aidas_HDD/MRI_data/S1/Analysis/mask.nii';
-mask_fn= sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Analysis/mask.nii',subID); % brain mask used for searchlight 
-addpath('/Users/aidas_el_cap/Documents/MATLAB/spm12/toolbox/marsbar/'); %marsbar dir keeps disappearing re-add it just in case
+%mask_fn= sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Analysis/mask.nii',subID); % brain mask used for searchlight 
+%mask_fn = '/Volumes/Aidas_HDD/MRI_data/MVPA_analyses/MVP_mask_for_MVPA.nii' % ROI-ish mask
+mask_fn = '/Volumes/Aidas_HDD/MRI_data/S4/Analysis2/mask.nii'
+%addpath('/Users/aidas_el_cap/Documents/MATLAB/spm12/toolbox/marsbar/'); %marsbar dir keeps disappearing re-add it just in case
 mvpadir = '/Volumes/Aidas_HDD/MRI_data/MVPA_analyses/'; % where to save stacked scans and outpt files
 
-roi_path = sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Analysis/FFA_ROI_roi.mat',subID); load(roi_path); %FFAish_roi.mat'; load(roi_path);% load to roi object
+
 % ^ FFA ROI used for plotting
 
 %% Load myTrials, plot and prep
@@ -25,6 +26,11 @@ end
 if exist(fullfile(mvpadir,sprintf('MVPA_stacked_scans_sub%d.mat',subID)),'file') ~= 2
 myTrials = MakeTRs2_faces(myTrials);
 
+
+try
+roi_path = sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Analysis/FFA_ROI_roi.mat',subID); load(roi_path); %FFAish_roi.mat'; load(roi_path);% load to roi object
+end
+
 if plotting == 1
 clf;
 hold on;
@@ -34,7 +40,7 @@ for i = 1:nsess
     subplot(nsess,1,i)
     xlabel(sprintf('Session %d',i))
     drawnow
-    P = sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Functional/Sess%d/f50hz_swradata.nii',subID,i);
+    P = sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Functional/Sess%d/f50hz_rrdata.nii',subID,i);
     mY = get_marsy(roi, P, 'mean'); % extract data into marsy data object   
     % get_marsy_1 <- pure magic 
 y = summary_data(mY);% get summary time course(s) % needs marsy object as input
@@ -69,11 +75,12 @@ else
     disp('stacking scans')
 %scans = find([myTrials.name_ID] ~= 0);
 scans = find([myTrials.name_ID] ~= 0 & [myTrials.blockNum] ~= 14);
+%%
 for ln = scans
     disp(ln)
     %hold on
     %filename = sprintf('/Volumes/Aidas_HDD/MRI_data/S2/Functional/Sess%d/f50hz_swradata.nii',target_EPIs(ln,3));
-    filename = sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Functional/Sess%d/f50hz_swradata.nii',subID,myTrials(ln).fmriRun);
+    filename = sprintf('/Volumes/Aidas_HDD/MRI_data/S%d/Functional/Sess%d/facew.nii',subID,myTrials(ln).fmriRun);
     single_scan = cosmo_fmri_dataset(filename,'mask', mask_fn,'targets',myTrials(ln).name_ID, 'chunks', myTrials(ln).blockNum, 'volumes',myTrials(ln).TR);
     %subplot(4,1,myTrials(ln).fmriRun)
     %plot(myTrials(ln).TR,mean(single_scan.samples),'r*')
@@ -88,13 +95,21 @@ for ln = scans
   %ends ln == 1 if statement
     %disp(['stacking scans ' num2str(length(all_scans.samples(:,1))) ' / ' num2str(length(scans)
 end
+%%
 disp('saving stacked scans')
 save(fullfile(mvpadir,sprintf('MVPA_stacked_scans_sub%d.mat',subID)),'all_scans')
 disp('saved')
 end
-%% end if 
-    
-    
+%% Z Scoring
+% 1 way, grab task in every run, zscore
+raw_all_scans = all_scans; %
+tasks = unique(all_scans.sa.chunks);
+for p = 1 : length(tasks);
+tinx = find(all_scans.sa.chunks == p);
+all_scans.samples(tinx,:) = zscore(all_scans.samples(tinx,:),[],1);
+end
+
+%%
 %    %% delete expanded scans
 %    if delete_expanded_scans == 1
 %    for p = 1: 4
@@ -124,6 +139,15 @@ opt=struct();
 opt.classifier=@cosmo_classify_lda;
 disp('opt.partitions')
 opt.partitions=cosmo_nchoosek_partitioner(all_scans,1);
+
+%% other available options:
+%opt=struct();
+%     opt.output='accuracy';
+%     opt.normalization='zscore';
+%     opt.classifier=@cosmo_classify_lda;
+%     opt.partitions=cosmo_nchoosek_partitioner(ds,2);
+
+
 %disp('balancing paritions')
 %opt.partitions_bal = cosmo_balance_partitions(opt.partitions,all_scans); %added to balance partitions, otherwise cosmo doesnt like it
 %opt.partitions = opt.partitions_bal 
@@ -132,11 +156,16 @@ opt.partitions=cosmo_nchoosek_partitioner(all_scans,1);
 % define spherical neighborhood with radius of 3 voxels
 
 % Run the searchlight with a 3 voxel radius
+%%
 corr_results=cosmo_searchlight(all_scans,nbrhood,measure,opt); % ERRORS HERE
 corr_results.samples=corr_results.samples-(1/40);
+m_acc = mean(corr_results.samples)
+mx_acc = max(corr_results.samples)
 %% save and exit
 output_fn=fullfile(mvpadir,sprintf('Sub%d_MVPA_results.nii',subID));
 cosmo_map2fmri(corr_results, output_fn);
+save(fullfile(mvpadir,sprintf('Sub%d_MVPA_wrkspc',subID)))
+end
 % output_fn1 = fullfile(pwd,[ datestr(datetime) '_MVPA_outFile.nii'])
 % try
 % cosmo_map2fmri(corr_results, output_fn1);
