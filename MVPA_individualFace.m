@@ -2,7 +2,7 @@
 %if db_mode == 0;/Volumes/Aidas_HDD/MRI_data/S6
 description = 'real per block z scoring only good faces, only single scan loaded, 6 second hrf offset'
 %% Parameters 
-subID = 4 % which subject
+subID = 5 % which subject
 nsess = 5; % how many sessions
 plotting = 0 % enable plotting?
 %% Directories % filenames
@@ -168,17 +168,16 @@ if i == length(all_scans.sa.chunks) - 1; % manualy break out at the end
 end 
 
 i;
-bl_length = i - bl_s; %block length, not super necess
+bl_length = i - bl_s; %block length, not super necessary, but nice to have for post-mortem de-bugging
 
 [bl_s bl_length i];
 all_scans.sa.chunks(bl_s,2) = 1;
 all_scans.sa.chunks(i,2) = 2;
 
-all_scans.samples(bl_s:i,:) = zscore(all_scans.samples(bl_s:i,:),[],1)
-%all_scans.samples(tinx,:) = zscore(all_scans.samples(tinx,:),[],1);
+all_scans.samples(bl_s:i,:) = zscore(all_scans.samples(bl_s:i,:),[],1) % Actual z scoring
 end
-debug_zScoring = all_scans.sa.chunks;
-all_scans.sa.chunks(:,2) = []
+debug_zScoring = all_scans.sa.chunks; %make a copy of block index
+all_scans.sa.chunks(:,2) = [] %
 %%
 %%
 %    %% delete expanded scans
@@ -233,6 +232,7 @@ corr_results=cosmo_searchlight(all_scans,nbrhood,measure,opt); %
 %corr_results.samples=corr_results.samples-(1/40);
 corr_results.samples=corr_results.samples-(1/length(unique(all_scans.sa.targets)));
 
+% r structure has the accuracies
 r{1,1} = 'mean accuracy';
 r{1,2} = 'max accuracy';
 r{1,3} = '#vx above 2% accuracy';
@@ -243,6 +243,7 @@ r{2,2} = max(corr_results.samples);
 r{2,3} = length(find(corr_results.samples > 0.02));
 r{2,4} = length(find(corr_results.samples > 0.03));
 r{2,5} = length(find(corr_results.samples > 0.04));
+
 %% save and exit
 file_name = sprintf('Sub%d_MVPA_results',subID)
 output_fn=fullfile(mvpadir,file_name);

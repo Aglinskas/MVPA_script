@@ -1,8 +1,6 @@
-%db_mode = 0; % debugger skips some of the initial steps and instead loads stuff that usually would be computed from a .mat file
-%if db_mode == 0;/Volumes/Aidas_HDD/MRI_data/S6
 description = 'real per block z scoring only good faces, only single scan loaded, 6 second hrf offset'
 %% Parameters 
-subID = 4 % which subject
+subID = 5 % which subject
 nsess = 5; % how many sessions
 plotting = 0 % enable plotting?
 %% Directories % filenames
@@ -243,6 +241,7 @@ r{2,2} = max(corr_results.samples);
 r{2,3} = length(find(corr_results.samples > 0.02));
 r{2,4} = length(find(corr_results.samples > 0.03));
 r{2,5} = length(find(corr_results.samples > 0.04));
+
 %% save and exit
 file_name = sprintf('Sub%d_MVPA_results',subID)
 output_fn=fullfile(mvpadir,file_name);
